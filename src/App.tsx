@@ -295,9 +295,123 @@ function App() {
     // Total score
     const totalScore: number = categoryScores.reduce((sum: number, s) => sum + (s || 0), 0);
 
+    // Helper to calculate potential score for a category
+    function getPotentialScore(catIdx: number): number {
+        if (catIdx < 4) {
+            // Regular berry categories
+            const count = dice.filter((d) => d === catIdx).length;
+            return count * BERRIES[catIdx].points;
+        } else if (catIdx === 4) {
+            // Any 3 Berries
+            for (let berryIdx = 0; berryIdx < 4; berryIdx++) {
+                const count = dice.filter((d) => d === berryIdx).length;
+                if (count === 3) {
+                    return 3 * BERRIES[berryIdx].points;
+                }
+            }
+            return 0;
+        } else if (catIdx === 5) {
+            // Any 4 Berries
+            for (let berryIdx = 0; berryIdx < 4; berryIdx++) {
+                const count = dice.filter((d) => d === berryIdx).length;
+                if (count === 4) {
+                    return 4 * BERRIES[berryIdx].points;
+                }
+            }
+            return 0;
+        } else if (catIdx === 6) {
+            // Any 5 Berries
+            for (let berryIdx = 0; berryIdx < 4; berryIdx++) {
+                const count = dice.filter((d) => d === berryIdx).length;
+                if (count === 5) {
+                    return 5 * BERRIES[berryIdx].points;
+                }
+            }
+            return 0;
+        } else if (catIdx === 7) {
+            // One of Each Berry
+            const berryCounts = [0, 0, 0, 0];
+            dice.forEach((d) => {
+                if (d !== null && d < 4) berryCounts[d]++;
+            });
+            if (berryCounts.every((c) => c >= 1)) {
+                // Find the remaining die (the one not used for the first instance of each berry)
+                const used = [0, 0, 0, 0];
+                let remainingDie: number | null = null;
+                for (let i = 0; i < dice.length; i++) {
+                    const d = dice[i];
+                    if (typeof d === "number" && d < 4 && used[d] < 1) {
+                        used[d]++;
+                    } else if (remainingDie === null) {
+                        remainingDie = d;
+                    }
+                }
+                let score = dice.reduce((sum: number, d) => {
+                    if (typeof d === "number" && d >= 0) {
+                        return sum + BERRIES[d].points;
+                    }
+                    return sum;
+                }, 0);
+                if (remainingDie === 4) {
+                    score *= 2;
+                }
+                return score;
+            }
+            return 0;
+        } else if (catIdx === 8) {
+            // Free Round: Try all other categories and pick the highest score
+            let bestScore = 0;
+            // Try regular berry categories
+            for (let i = 0; i < 4; i++) {
+                const count = dice.filter((d) => d === i).length;
+                const s = count * BERRIES[i].points;
+                if (s > bestScore) bestScore = s;
+            }
+            // Any 3, 4, 5 Berries
+            for (let n = 3; n <= 5; n++) {
+                for (let berryIdx = 0; berryIdx < 4; berryIdx++) {
+                    const count = dice.filter((d) => d === berryIdx).length;
+                    if (count === n) {
+                        const s = n * BERRIES[berryIdx].points;
+                        if (s > bestScore) bestScore = s;
+                    }
+                }
+            }
+            // One of Each Berry
+            const berryCounts = [0, 0, 0, 0];
+            dice.forEach((d) => {
+                if (typeof d === "number" && d < 4) berryCounts[d]++;
+            });
+            if (berryCounts.every((c) => c >= 1)) {
+                const used = [0, 0, 0, 0];
+                let remainingDie: number | null = null;
+                for (let i = 0; i < dice.length; i++) {
+                    const d = dice[i];
+                    if (typeof d === "number" && d < 4 && used[d] < 1) {
+                        used[d]++;
+                    } else if (remainingDie === null) {
+                        remainingDie = d;
+                    }
+                }
+                let s = dice.reduce((sum: number, d) => {
+                    if (typeof d === "number" && d >= 0) {
+                        return sum + BERRIES[d].points;
+                    }
+                    return sum;
+                }, 0);
+                if (remainingDie === 4) {
+                    s *= 2;
+                }
+                if (s > bestScore) bestScore = s;
+            }
+            return bestScore;
+        }
+        return 0;
+    }
+
     // UI
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-green-100 flex flex-col items-center py-8 px-2">
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-green-100 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center py-8 px-2">
             <h1 className="text-4xl font-extrabold text-pink-700 mb-4 drop-shadow-lg flex items-center gap-4 justify-between">
                 Jumbleberry Fields
                 <button
@@ -307,8 +421,8 @@ function App() {
                     Reset Game
                 </button>
             </h1>
-            <div className="w-full max-w-xl bg-white/80 rounded-xl shadow-lg p-6 flex flex-col gap-4">
-                <div className="flex flex-row justify-between items-center text-lg font-semibold text-gray-700">
+            <div className="w-full max-w-xl bg-white/80 dark:bg-gray-900/90 rounded-xl shadow-lg p-6 flex flex-col gap-4">
+                <div className="flex flex-row justify-between items-center text-lg font-semibold text-gray-700 dark:text-gray-200">
                     <div>
                         Round: <span className="text-blue-700">{round}</span> / {ROUNDS}
                     </div>
@@ -319,14 +433,14 @@ function App() {
                         Score: <span className="text-orange-600 font-bold">{totalScore}</span>
                     </div>
                 </div>
-                {message && <div className="text-center text-lg text-pink-700 font-bold">{message}</div>}
+                {message && <div className="text-center text-lg text-pink-700 dark:text-pink-300 font-bold">{message}</div>}
                 <div className="flex flex-row justify-center gap-4 my-4">
                     {dice.map((d, i) => (
                         <button
                             key={i}
                             className={`w-20 h-20 rounded-full shadow-lg border-4 flex flex-col items-center justify-center text-lg font-bold transition-all duration-150
                 ${kept[i] ? "ring-4 ring-yellow-400 scale-110" : "hover:scale-105"}
-                ${dice[i] !== null ? "text-white" : "text-gray-400"}
+                ${dice[i] !== null ? "text-white" : "text-gray-400 dark:text-gray-500"}
               `}
                             style={{
                                 background: animating[i] ? BERRIES[animDice[i] ?? 0].color : dice[i] !== null ? BERRIES[dice[i]!].color : "#e5e7eb",
@@ -368,14 +482,14 @@ function App() {
                         {BERRIES.slice(0, 4).map((b, idx) => (
                             <button
                                 key={b.name}
-                                className={`px-3 py-2 rounded-lg font-bold shadow-md border-2 transition-all
-                  ${
-                      categoryScores[idx] !== null
-                          ? "bg-gray-200 border-gray-400 text-gray-400 cursor-not-allowed"
-                          : "bg-white border-gray-300 hover:bg-blue-100 hover:border-blue-400 text-gray-800"
-                  }
-                  ${rolls === 0 || gameOver || dice.includes(null) ? "opacity-50 cursor-not-allowed" : ""}
-                `}
+                                className={
+                                    `group ` +
+                                    `px-3 py-2 rounded-lg font-bold shadow-md border-2 transition-all ` +
+                                    (categoryScores[idx] !== null
+                                        ? "bg-gray-200 border-gray-400 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-600"
+                                        : "bg-white border-gray-300 hover:bg-blue-100 hover:border-blue-400 text-gray-800 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:border-pink-400") +
+                                    (rolls === 0 || gameOver || dice.includes(null) ? " opacity-50 cursor-not-allowed" : "")
+                                }
                                 style={{
                                     background: categoryScores[idx] !== null ? "#e5e7eb" : b.color + "22",
                                     borderColor: categoryScores[idx] !== null ? "#d1d5db" : b.color,
@@ -396,7 +510,11 @@ function App() {
                                 {categoryScores[idx] !== null ? (
                                     <span className="block w-full text-xs text-gray-500 font-normal mt-1">{categoryScores[idx]} pts</span>
                                 ) : (
-                                    <span className="block w-full text-xs text-gray-300 font-normal mt-1">—</span>
+                                    <span className="block w-full text-xs text-gray-300 font-normal mt-1">
+                                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                            {getPotentialScore(idx)} pts
+                                        </span>
+                                    </span>
                                 )}
                             </button>
                         ))}
@@ -404,14 +522,14 @@ function App() {
                         {SPECIAL_CATEGORIES.map((cat, i) => (
                             <button
                                 key={cat.name}
-                                className={`px-3 py-2 rounded-lg font-bold shadow-md border-2 transition-all
-                  ${
-                      categoryScores[4 + i] !== null
-                          ? "bg-gray-200 border-gray-400 text-gray-400 cursor-not-allowed"
-                          : "bg-white border-gray-300 hover:bg-blue-100 hover:border-blue-400 text-gray-800"
-                  }
-                  ${rolls === 0 || gameOver || dice.includes(null) ? "opacity-50 cursor-not-allowed" : ""}
-                `}
+                                className={
+                                    `group ` +
+                                    `px-3 py-2 rounded-lg font-bold shadow-md border-2 transition-all ` +
+                                    (categoryScores[4 + i] !== null
+                                        ? "bg-gray-200 border-gray-400 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-600"
+                                        : "bg-white border-gray-300 hover:bg-blue-100 hover:border-blue-400 text-gray-800 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:border-pink-400") +
+                                    (rolls === 0 || gameOver || dice.includes(null) ? " opacity-50 cursor-not-allowed" : "")
+                                }
                                 style={{
                                     background: categoryScores[4 + i] !== null ? "#e5e7eb" : cat.color + "22",
                                     borderColor: categoryScores[4 + i] !== null ? "#d1d5db" : cat.color,
@@ -433,7 +551,11 @@ function App() {
                                 {categoryScores[4 + i] !== null ? (
                                     <span className="block w-full text-xs text-gray-500 font-normal mt-1">{categoryScores[4 + i]} pts</span>
                                 ) : (
-                                    <span className="block w-full text-xs text-gray-300 font-normal mt-1">—</span>
+                                    <span className="block w-full text-xs text-gray-300 font-normal mt-1">
+                                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                            {getPotentialScore(4 + i)} pts
+                                        </span>
+                                    </span>
                                 )}
                             </button>
                         ))}
@@ -441,8 +563,8 @@ function App() {
                 </div>
                 {/* Game Over Modal */}
                 {gameOver && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className="bg-white rounded-xl shadow-2xl p-8 flex flex-col items-center max-w-sm w-full">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70">
+                        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-8 flex flex-col items-center max-w-sm w-full">
                             <h2 className="text-2xl font-bold text-pink-700 mb-2">Game Over!</h2>
                             <div className="text-xl font-bold text-orange-700 mb-1">Your Score: {totalScore}</div>
                             <button
